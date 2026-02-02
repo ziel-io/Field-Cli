@@ -1,0 +1,25 @@
+# Field CLI - Default Policies
+# 默认策略配置
+
+# 执行层级模块需要用户确认
+[[rule]]
+toolName = "cognitive_exec"
+decision = "ask_user"
+priority = 10
+
+# 只读模块自动允许
+[[rule]]
+toolName = "cognitive_analyze"
+decision = "allow"
+priority = 50
+
+[[rule]]
+toolName = "cognitive_review"
+decision = "allow"
+priority = 50
+
+# YOLO 模式 - 全部允许
+[[rule]]
+decision = "allow"
+priority = 999
+modes = ["yolo"]
