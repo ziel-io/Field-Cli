@@ -1,7 +1,7 @@
 {
-  "name": "@anthropic-field/cli",
-  "version": "1.0.0",
-  "description": "AI CLI with native Cognitive Modules support",
+  "name": "field-cli-core",
+  "version": "2.0.0",
+  "description": "AI CLI with native Cognitive Modules support - Multi-provider LLM client with Function Calling",
   "type": "module",
   "main": "dist/ui/index.js",
   "bin": {
@@ -11,17 +11,42 @@
     "build": "tsc",
     "dev": "tsx src/ui/index.tsx",
     "start": "node dist/ui/index.js",
-    "start:old": "node dist/index.js"
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "ai",
     "cli",
-    "cognitive",
+    "cognitive-modules",
+    "llm",
     "minimax",
-    "deepseek"
+    "deepseek",
+    "kimi",
+    "openai",
+    "claude",
+    "qwen",
+    "gemini",
+    "function-calling",
+    "agent",
+    "terminal"
   ],
   "author": "ziel-io",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ziel-io/Field-Cli.git"
+  },
+  "homepage": "https://github.com/ziel-io/Field-Cli#readme",
+  "bugs": {
+    "url": "https://github.com/ziel-io/Field-Cli/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "ajv": "^8.17.1",
     "chalk": "^5.3.0",
