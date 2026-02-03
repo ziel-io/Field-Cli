@@ -1,6 +1,6 @@
 {
   "name": "field-cli-core",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "AI CLI with native Cognitive Modules support - Multi-provider LLM client with Function Calling",
   "type": "module",
   "main": "dist/ui/index.js",

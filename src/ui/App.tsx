@@ -461,8 +461,29 @@ export default function App(): React.ReactElement {
             }
             
             const result = await executeToolCall(toolCall, currentClient, currentProvider.name);
-            addMessage(result.success ? 'success' : 'error', result.success ? '✓' : `✗ ${result.error}`);
-            toolResults.push(`[${moduleName}] ${result.success ? 'Success' : 'Failed: ' + result.error}`);
+            
+            if (result.success) {
+              addMessage('success', '✓');
+              // 显示模块返回的结果
+              if (result.result) {
+                try {
+                  const resultStr = typeof result.result === 'string' 
+                    ? result.result 
+                    : JSON.stringify(result.result, null, 2);
+                  // 限制显示长度，避免过长
+                  const displayResult = resultStr.length > 2000 
+                    ? resultStr.slice(0, 2000) + '\n... (truncated)'
+                    : resultStr;
+                  addMessage('info', displayResult);
+                } catch {
+                  addMessage('info', String(result.result));
+                }
+              }
+              toolResults.push(`[${moduleName}] Success`);
+            } else {
+              addMessage('error', `✗ ${result.error}`);
+              toolResults.push(`[${moduleName}] Failed: ${result.error}`);
+            }
           }
           
           // 将 tool 执行结果加入历史，让模型知道执行了什么

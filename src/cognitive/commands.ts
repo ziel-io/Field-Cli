@@ -149,40 +149,46 @@ async function cmdRun(args: string[]): Promise<void> {
     }
   }
 
-  console.log(chalk.cyan(`\n📦 Executing module: ${name}`));
-  console.log(chalk.gray(`Input: ${JSON.stringify(input, null, 2)}`));
-  console.log(chalk.gray('─'.repeat(40)));
+  console.log(`\n📦 Executing module: ${name}`);
+  console.log(`Input: ${JSON.stringify(input, null, 2)}`);
+  console.log('─'.repeat(40));
 
   try {
     const startTime = Date.now();
+    let streamOutput = '';
     
     const result = await executeModule(module, _currentClient, _currentProvider.name, {
       input,
       stream: true,
       onChunk: (chunk, done) => {
-        if (!done) process.stdout.write(chunk);
+        if (!done) streamOutput += chunk;
       },
     });
 
     const elapsed = Date.now() - startTime;
 
-    console.log('\n');
-    console.log(chalk.gray('─'.repeat(40)));
+    // 显示流式输出（如果有）
+    if (streamOutput) {
+      console.log('\nStreaming output:');
+      console.log(streamOutput);
+    }
+    
+    console.log('─'.repeat(40));
     
     if (result.success) {
-      console.log(chalk.green(`✓ Module executed successfully (${elapsed}ms)`));
-      console.log(chalk.white('\nResult:'));
-      console.log(chalk.gray(JSON.stringify(result.envelope, null, 2)));
+      console.log(`✓ Module executed successfully (${elapsed}ms)`);
+      console.log('\nResult:');
+      console.log(JSON.stringify(result.envelope, null, 2));
     } else {
-      console.log(chalk.red(`✗ Module execution failed (${elapsed}ms)`));
-      console.log(chalk.red(JSON.stringify(result.envelope, null, 2)));
+      console.log(`✗ Module execution failed (${elapsed}ms)`);
+      console.log(JSON.stringify(result.envelope, null, 2));
     }
 
     if (result.repaired) {
-      console.log(chalk.yellow('\n⚠️  Response was auto-repaired'));
+      console.log('\n⚠️  Response was auto-repaired');
     }
   } catch (error) {
-    console.log(chalk.red(`\nExecution error: ${error instanceof Error ? error.message : error}`));
+    console.log(`\nExecution error: ${error instanceof Error ? error.message : error}`);
   }
 }
 
