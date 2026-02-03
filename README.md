@@ -179,6 +179,187 @@ API Key for MiniMax
 Enter confirm • ESC cancel
 ```
 
+### Smart Provider Selection v3.0
+
+Field CLI 内置智能 Provider 选择引擎，可根据任务类型、策略偏好自动选择最优模型。
+
+#### 🔍 数据真实性保证
+
+所有模型数据均来自权威第三方来源，**不是编造的**：
+
+| 数据类型 | 数据来源 | 链接 |
+|----------|----------|------|
+| **模型质量排名** | LMSYS Chatbot Arena | [lmarena.ai/leaderboard](https://lmarena.ai/leaderboard) |
+| **性能基准测试** | Artificial Analysis | [artificialanalysis.ai/models](https://artificialanalysis.ai/models) |
+| **API 定价** | 官方定价页面 | OpenAI / Anthropic / DeepSeek / Google |
+| **中文模型评测** | DataLearner | [datalearner.com/ai-models](https://www.datalearner.com/ai-models) |
+
+**数据更新**: 2026-02-03 | **覆盖模型**: 22+ | **覆盖 Provider**: 10+
+
+#### 🎯 多维度评分系统
+
+**核心创新**: 不再使用单一评分，而是根据任务类型使用 LMSYS Arena 对应维度的评分：
+
+| 任务类型 | 使用维度 | 说明 |
+|----------|----------|------|
+| `code` | `scores.code` | Code Arena 专项排名 |
+| `creative` | `scores.creative` | Creative Writing 排名 |
+| `analysis` | `scores.hardPrompts` | 困难提示/复杂推理排名 |
+| `vision` | `scores.vision` | Vision Arena 排名 |
+| `long` | `scores.longerQuery` | 长查询处理排名 |
+| `simple` | `scores.instructionFollowing` | 指令遵循排名 |
+| `chat` / `auto` | `scores.overall` | 综合排名 (默认) |
+
+每个模型存储多维度评分：
+
+```typescript
+{
+  model: 'claude-opus-4-5-20251101',
+  scores: {
+    overall: 93,       // LMSYS Overall #4 (ELO 1468)
+    code: 100,         // Code Arena #1! (ELO 1500) 🏆
+    creative: 91,      // Creative Writing #2 (ELO 1457)
+    math: 88,
+    hardPrompts: 95,
+    longerQuery: 95,   // Longer Query #1
+  },
+  // ...
+}
+```
+
+#### 2026年最新多维度排名 (LMSYS Arena)
+
+**Overall 综合排名:**
+| 排名 | 模型 | ELO | 特点 |
+|------|------|-----|------|
+| #1 | Gemini-3-Pro | 1487 | 综合、创意、视觉三冠王 |
+| #2 | Grok-4.1-Thinking | 1475 | 推理强劲 |
+| #3 | Gemini-3-Flash | 1471 | 性价比之王 |
+| #4 | Claude Opus 4.5 | 1468 | 代码之王 |
+
+**Code 代码排名:**
+| 排名 | 模型 | ELO | 特点 |
+|------|------|-----|------|
+| #1 | Claude Opus 4.5 Thinking | 1500 | 🏆 代码绝对第一 |
+| #2 | GPT-5.2-High | 1472 | |
+| #3 | Claude Opus 4.5 | 1470 | |
+| #5 | Kimi-K2.5-Thinking | 1447 | 国产代码之星 |
+
+**Creative Writing 创意写作:**
+| 排名 | 模型 | ELO |
+|------|------|-----|
+| #1 | Gemini-3-Pro | 1491 |
+| #2 | Claude Opus 4.5 | 1457 |
+| #3 | Gemini-3-Flash | 1457 |
+
+#### 2026年最新定价对比
+
+| Provider | 模型 | Input ($/1M) | Output ($/1M) | 性价比 |
+|----------|------|-------------|---------------|--------|
+| DeepSeek | V3.2 | $0.28 | $0.42 | ⭐⭐⭐⭐⭐ |
+| Gemini | 3 Flash | $0.50 | $3.00 | ⭐⭐⭐⭐ |
+| OpenAI | GPT-4.1-mini | $0.15 | $0.60 | ⭐⭐⭐⭐ |
+| Claude | Sonnet 4.5 | $3.00 | $15.00 | ⭐⭐⭐ |
+| Gemini | 3 Pro | $2.00 | $12.00 | ⭐⭐⭐ |
+| Claude | Opus 4.5 | $5.00 | $25.00 | ⭐⭐ |
+
+#### 选择策略
+
+| 策略 | 说明 | 公式 |
+|------|------|------|
+| `quality` | 质量优先 | 按 qualityScore 排序 |
+| `economy` | 成本优先 | 质量×0.3 + 成本评分×0.7 |
+| `speed` | 速度优先 | 质量×0.3 + 速度评分×0.7 |
+| `balanced` | 平衡（默认） | quality / log(cost+1) |
+
+#### 任务类型自动检测
+
+引擎会分析输入文本，自动识别任务类型：
+
+| 类型 | 关键词示例 | 推荐 Provider |
+|------|-----------|---------------|
+| `code` | function, debug, 代码, 修复 | Claude (Code #1), Gemini |
+| `analysis` | analyze, 为什么, 分析 | Gemini-3-Pro, Claude |
+| `creative` | write, 故事, 创意 | Claude, GPT-5 |
+| `chinese` | 中文内容 (>30%) | DeepSeek, Kimi, Qwen |
+| `long` | 文本长度 >50k | Gemini (1M ctx), Grok (2M ctx) |
+| `vision` | image, 图片, 截图 | Gemini-3-Pro, GPT-5 |
+
+#### 模型评分配置
+
+每个模型有详细的**多维度**性能档案（基于真实数据）：
+
+```typescript
+{
+  // DeepSeek V3.2 - LMSYS Arena 多维度评分
+  model: 'deepseek-chat',
+  scores: {
+    overall: 84,           // LMSYS Overall #37 (ELO 1420)
+    code: 75,              // Code Arena #24 (ELO 1301)
+    creative: 80,          // Creative Writing #26
+    longerQuery: 82,
+  },
+  costPer1M: 0.35,         // 官方: $0.28 in / $0.42 out 加权平均
+  avgLatencyMs: 600,       // Artificial Analysis 实测
+  maxContext: 128000,      // 官方文档
+  capabilities: ['code', 'reasoning', 'cheap', 'fast', 'chinese'],
+}
+```
+
+**评分换算公式**: `score = (ELO - 1000) / 5`
+- ELO 1500 → 100 分
+- ELO 1400 → 80 分
+- ELO 1300 → 60 分
+
+#### 历史学习 + 动态延迟
+
+引擎会记录每次调用的结果，动态调整 Provider 评分：
+- 调用成功：+1 分
+- 调用失败：-5 分（惩罚不稳定的 Provider）
+- **实测延迟**：自动记录并用于未来选择（比基准数据更准确）
+
+数据保存位置：
+- 使用统计：`~/.field-cli/usage-stats.json`
+- 模型数据缓存：`~/.field-cli/model-data-cache.json`
+
+#### 数据验证
+
+```typescript
+import { SmartSelect } from 'field-cli-core';
+
+// 查看数据来源
+SmartSelect.getDataSources();
+// → { 'LMSYS Chatbot Arena': 'https://lmarena.ai/leaderboard', ... }
+
+// 验证数据真实性
+const validation = SmartSelect.validateData();
+console.log(validation.info);     // 数据来源信息
+console.log(validation.warnings); // 数据过期警告
+```
+
+#### 程序化使用
+
+```typescript
+import { selectProvider, SmartSelect } from 'field-cli-core';
+
+// 自动选择
+const result = selectProvider({
+  taskType: 'auto',
+  inputText: '帮我写一个 Python 排序函数',
+  strategy: 'balanced',
+});
+// → { provider: 'deepseek', model: 'deepseek-chat', ... }
+
+// 快捷方法
+SmartSelect.forCode();         // 代码任务 → Claude (Code #1)
+SmartSelect.forChinese();      // 中文任务 → DeepSeek/Kimi/Qwen
+SmartSelect.cheapest();        // 最便宜 → DeepSeek ($0.35/1M)
+SmartSelect.fastest();         // 最快 → Gemini-3-Flash
+SmartSelect.forLongContext();  // 长文本 → Gemini (1M) / Grok (2M)
+SmartSelect.forVision();       // 视觉任务 → Gemini-3-Pro
+SmartSelect.withBudget(0.01);  // 限制预算
+```
+
 ---
 
 ## 命令参考

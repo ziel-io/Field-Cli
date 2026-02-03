@@ -1,9 +1,11 @@
 /**
  * Field CLI - Main App Component
  * UI 风格参考 Kimi Code CLI
+ * 
+ * v2.1: Enhanced Interactive Setup with detailed model descriptions
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Box, Text, useApp, useInput, useStdin, useStdout } from 'ink';
 import SelectInput from 'ink-select-input';
 
@@ -24,8 +26,158 @@ import {
   toolCallRequiresConfirmation,
   PolicyDecision,
 } from '../cognitive/tool-registry.js';
+import {
+  startBackgroundUpdateCheck,
+  getStartupCheckResult,
+  getVersionInfo,
+  formatUpdateNotice,
+  getUpdateCommand,
+  checkForUpdates,
+  getCurrentVersion,
+} from '../version-manager.js';
 
 type View = 'chat' | 'provider-select' | 'model-select' | 'api-key-input';
+
+// =============================================================================
+// Enhanced Provider & Model Configurations
+// =============================================================================
+
+interface ModelDetail {
+  id: string;
+  description: string;
+  price: string;        // e.g., "$0.27/1M"
+  context: string;      // e.g., "128K"
+  tags: string[];       // e.g., ["推荐", "代码最强"]
+  capabilities: string[];  // e.g., ["code", "reasoning"]
+}
+
+interface ProviderDetail {
+  name: string;
+  displayName: string;
+  badge?: string;       // e.g., "⭐ 推荐", "💰 最便宜"
+  models: ModelDetail[];
+}
+
+const PROVIDER_DETAILS: Record<string, ProviderDetail> = {
+  minimax: {
+    name: 'minimax',
+    displayName: 'MiniMax',
+    badge: '⭐ 推荐',
+    models: [
+      { id: 'MiniMax-M2.1', description: '最新旗舰模型', price: '$0.75/1M', context: '64K', tags: ['推荐', '均衡'], capabilities: ['code', 'creative'] },
+      { id: 'abab6.5s-chat', description: '高性价比', price: '$0.3/1M', context: '245K', tags: ['便宜', '长文本'], capabilities: ['chat'] },
+    ],
+  },
+  deepseek: {
+    name: 'deepseek',
+    displayName: 'DeepSeek',
+    badge: '💰 超低价',
+    models: [
+      { id: 'deepseek-chat', description: 'V3.2 最新版', price: '$0.27/1M', context: '64K', tags: ['最便宜', '代码强'], capabilities: ['code', 'reasoning', 'chinese'] },
+      { id: 'deepseek-reasoner', description: '深度推理模式', price: '$2.19/1M', context: '64K', tags: ['推理'], capabilities: ['reasoning'] },
+    ],
+  },
+  kimi: {
+    name: 'kimi',
+    displayName: 'Kimi (Moonshot)',
+    badge: '📚 超长上下文',
+    models: [
+      { id: 'kimi-k2.5', description: '最新多模态', price: '$1.25/1M', context: '256K', tags: ['推荐', '中文最强'], capabilities: ['code', 'reasoning', 'chinese'] },
+      { id: 'moonshot-v1-128k', description: '128K 长文本', price: '$0.8/1M', context: '128K', tags: ['长文本'], capabilities: ['chinese'] },
+      { id: 'moonshot-v1-32k', description: '32K 标准版', price: '$0.24/1M', context: '32K', tags: ['便宜'], capabilities: ['chinese'] },
+    ],
+  },
+  anthropic: {
+    name: 'anthropic',
+    displayName: 'Claude (Anthropic)',
+    badge: '💪 代码最强',
+    models: [
+      { id: 'claude-sonnet-4-5-20250514', description: 'Sonnet 4.5 最新', price: '$3/1M', context: '200K', tags: ['推荐', '代码最强'], capabilities: ['code', 'reasoning', 'creative'] },
+      { id: 'claude-opus-4-5-20250514', description: 'Opus 4.5 旗舰', price: '$15/1M', context: '200K', tags: ['最强'], capabilities: ['code', 'reasoning', 'creative'] },
+    ],
+  },
+  openai: {
+    name: 'openai',
+    displayName: 'OpenAI',
+    badge: '🧠 推理强',
+    models: [
+      { id: 'gpt-4o', description: '多模态旗舰', price: '$5/1M', context: '128K', tags: ['推荐', '多模态'], capabilities: ['code', 'reasoning', 'vision'] },
+      { id: 'gpt-4o-mini', description: '轻量快速', price: '$0.15/1M', context: '128K', tags: ['便宜', '快'], capabilities: ['fast'] },
+      { id: 'o1', description: '深度推理', price: '$15/1M', context: '200K', tags: ['推理最强'], capabilities: ['reasoning'] },
+    ],
+  },
+  qwen: {
+    name: 'qwen',
+    displayName: 'Qwen (通义千问)',
+    badge: '🇨🇳 中文优化',
+    models: [
+      { id: 'qwen-max', description: '最大能力版', price: '$2.4/1M', context: '32K', tags: ['推荐'], capabilities: ['code', 'reasoning', 'chinese'] },
+      { id: 'qwen-plus', description: '平衡版本', price: '$0.8/1M', context: '128K', tags: ['长文本'], capabilities: ['chinese'] },
+      { id: 'qwen-turbo', description: '极速版', price: '$0.3/1M', context: '128K', tags: ['便宜', '快'], capabilities: ['fast', 'chinese'] },
+    ],
+  },
+  gemini: {
+    name: 'gemini',
+    displayName: 'Gemini (Google)',
+    badge: '🌟 百万上下文',
+    models: [
+      { id: 'gemini-2.0-flash', description: '极速版', price: '$0.7/1M', context: '1M', tags: ['快', '长文本'], capabilities: ['fast', 'vision'] },
+      { id: 'gemini-2.5-pro', description: '旗舰版', price: '$3.5/1M', context: '1M', tags: ['推荐'], capabilities: ['code', 'reasoning', 'vision'] },
+    ],
+  },
+  together: {
+    name: 'together',
+    displayName: 'Together AI',
+    badge: '🔓 开源模型',
+    models: [
+      { id: 'meta-llama/Llama-3.3-70B-Instruct-Turbo', description: 'Llama 3.3 70B', price: '$0.88/1M', context: '128K', tags: ['开源'], capabilities: ['code'] },
+      { id: 'Qwen/Qwen2.5-72B-Instruct-Turbo', description: 'Qwen 2.5 72B', price: '$1.2/1M', context: '128K', tags: ['开源', '中文'], capabilities: ['chinese'] },
+    ],
+  },
+  openrouter: {
+    name: 'openrouter',
+    displayName: 'OpenRouter',
+    badge: '🔀 多模型路由',
+    models: [
+      { id: 'anthropic/claude-sonnet-4', description: 'Claude via OR', price: '$3/1M', context: '200K', tags: [], capabilities: ['code'] },
+      { id: 'openai/gpt-4o', description: 'GPT-4o via OR', price: '$5/1M', context: '128K', tags: [], capabilities: ['code'] },
+    ],
+  },
+  custom: {
+    name: 'custom',
+    displayName: 'Custom (自定义)',
+    models: [
+      { id: 'custom', description: '输入 OpenAI 兼容的模型名', price: '-', context: '-', tags: [], capabilities: [] },
+    ],
+  },
+};
+
+/**
+ * 获取增强的 Provider 列表项
+ */
+function getEnhancedProviderItems(): Array<{ label: string; value: string }> {
+  const providers = listProviders();
+  return providers.map(p => {
+    const detail = PROVIDER_DETAILS[p.name];
+    const badge = detail?.badge || '';
+    const label = badge ? `${badge} ${p.displayName}` : p.displayName;
+    return { label, value: p.name };
+  });
+}
+
+/**
+ * 获取增强的 Model 列表项
+ */
+function getEnhancedModelItems(providerName: string): Array<{ label: string; value: string }> {
+  const detail = PROVIDER_DETAILS[providerName];
+  if (!detail) return [];
+  
+  return detail.models.map(m => {
+    const tags = m.tags.length > 0 ? ` [${m.tags.join(', ')}]` : '';
+    const label = `${m.id}${tags}\n   ${m.description} · ${m.context} · ${m.price}`;
+    return { label, value: m.id };
+  });
+}
 
 let messageId = 0;
 const genId = () => `msg-${++messageId}`;
@@ -96,9 +248,20 @@ export default function App(): React.ReactElement {
   const [apiKeyInput, setApiKeyInput] = useState('');
   
   const [autoInvokeEnabled, setAutoInvokeEnabled] = useState(true);
+  const [updateNotice, setUpdateNotice] = useState<string | null>(null);
   
   useEffect(() => {
     try { setRawMode(true); } catch (e) {}
+    
+    // 启动后台更新检查
+    startBackgroundUpdateCheck();
+    
+    // 检查更新结果（非阻塞）
+    getStartupCheckResult().then(info => {
+      if (info?.hasUpdate) {
+        setUpdateNotice(formatUpdateNotice(info));
+      }
+    });
     
     const saved = getDefaultProvider();
     if (saved.provider) {
@@ -131,7 +294,43 @@ export default function App(): React.ReactElement {
     switch (command) {
       case 'help':
       case 'h':
-        addMessage('info', 'Commands: /help /model /api /cog /stats /history /clear /quit');
+        addMessage('info', 'Commands: /help /model /api /version /cog /stats /history /clear /quit');
+        break;
+      case 'version':
+      case 'v':
+        try {
+          const versionInfo = await getVersionInfo();
+          let msg = `Field CLI v${versionInfo.current}`;
+          if (versionInfo.hasUpdate && versionInfo.latest) {
+            msg += `\n🆕 Update available: ${versionInfo.latest} (${versionInfo.updateType})`;
+            msg += `\n   Run: ${getUpdateCommand()}`;
+          } else {
+            msg += '\n✓ You are on the latest version';
+          }
+          if (versionInfo.lastCheck) {
+            msg += `\nLast check: ${new Date(versionInfo.lastCheck).toLocaleString()}`;
+          }
+          addMessage('info', msg);
+        } catch (error) {
+          addMessage('info', `Field CLI v${getCurrentVersion()}`);
+        }
+        break;
+      case 'update':
+        try {
+          addMessage('info', '🔄 Checking for updates...');
+          const updateInfo = await checkForUpdates({ force: true });
+          if (updateInfo?.hasUpdate) {
+            addMessage('success', `🆕 Update available: ${updateInfo.currentVersion} → ${updateInfo.latestVersion}`);
+            addMessage('info', `Run: ${getUpdateCommand()}`);
+            if (updateInfo.changelog) {
+              addMessage('info', `Changelog:\n${updateInfo.changelog.slice(0, 500)}${updateInfo.changelog.length > 500 ? '...' : ''}`);
+            }
+          } else {
+            addMessage('success', '✓ You are on the latest version');
+          }
+        } catch (error) {
+          addMessage('error', 'Failed to check for updates');
+        }
         break;
       case 'model':
         setView('provider-select');
@@ -343,13 +542,27 @@ export default function App(): React.ReactElement {
     if (input === 'c' && key.ctrl) exit();
   });
   
-  const providerItems = listProviders().map(p => ({ label: `${p.displayName}`, value: p.name }));
-  const modelItems = pendingProvider?.models.map(m => ({ label: m, value: m })) || [];
+  // 增强的 Provider 和 Model 列表
+  const providerItems = useMemo(() => getEnhancedProviderItems(), []);
+  const modelItems = useMemo(() => {
+    if (!pendingProvider) return [];
+    return getEnhancedModelItems(pendingProvider.name);
+  }, [pendingProvider]);
+
+  // 获取当前选中 Provider 的详情
+  const pendingProviderDetail = pendingProvider ? PROVIDER_DETAILS[pendingProvider.name] : null;
 
   return (
     <Box flexDirection="column" width={terminalWidth}>
       {/* Header */}
       <Header provider={currentProvider} />
+      
+      {/* Update Notice */}
+      {updateNotice && (
+        <Box marginBottom={1}>
+          <Text color="yellow">{updateNotice}</Text>
+        </Box>
+      )}
       
       {/* Model Info */}
       <ModelInfo provider={currentProvider} modelName={currentModel} />
@@ -368,35 +581,99 @@ export default function App(): React.ReactElement {
         </Box>
       )}
 
-      {/* Provider Select */}
+      {/* Provider Select - Enhanced */}
       {view === 'provider-select' && (
         <Box flexDirection="column" marginLeft={2}>
-          <Text color="white" bold>Select Provider</Text>
-          <Text color="gray" dimColor>ESC cancel</Text>
-          <Box marginTop={1}>
+          <Box marginBottom={1}>
+            <Text color="cyan" bold>╭─ Select Provider ─────────────────────────────────────╮</Text>
+          </Box>
+          <Box flexDirection="column" paddingLeft={1}>
             <SelectInput items={providerItems} onSelect={handleProviderSelect} />
           </Box>
+          <Box marginTop={1}>
+            <Text color="gray" dimColor>↑↓ Navigate · Enter Select · ESC Cancel</Text>
+          </Box>
+          <Box>
+            <Text color="cyan" bold>╰───────────────────────────────────────────────────────╯</Text>
+          </Box>
         </Box>
       )}
 
-      {/* API Key Input */}
+      {/* API Key Input - Enhanced */}
       {view === 'api-key-input' && pendingProvider && (
         <Box flexDirection="column" marginLeft={2}>
-          <Text color="white" bold>API Key for {pendingProvider.displayName}</Text>
-          <Box marginTop={1}>
-            <Text color="cyan">{apiKeyInput ? '*'.repeat(apiKeyInput.length) : '_'}</Text>
+          <Box marginBottom={1}>
+            <Text color="cyan" bold>╭─ API Key ─────────────────────────────────────────────╮</Text>
           </Box>
-          <Text color="gray" dimColor>Enter confirm • ESC cancel</Text>
+          <Box flexDirection="column" paddingLeft={1}>
+            <Box>
+              <Text color="white" bold>{pendingProviderDetail?.badge || ''} {pendingProvider.displayName}</Text>
+            </Box>
+            <Box marginTop={1}>
+              <Text color="gray">API Key: </Text>
+              <Text color="yellow">{apiKeyInput ? '*'.repeat(Math.min(apiKeyInput.length, 40)) : '(enter your API key)'}</Text>
+            </Box>
+            <Box marginTop={1}>
+              <Text color="gray" dimColor>
+                Get key from: {pendingProvider.name === 'deepseek' ? 'platform.deepseek.com' :
+                  pendingProvider.name === 'kimi' ? 'platform.moonshot.cn' :
+                  pendingProvider.name === 'minimax' ? 'api.minimax.chat' :
+                  pendingProvider.name === 'openai' ? 'platform.openai.com' :
+                  pendingProvider.name === 'anthropic' ? 'console.anthropic.com' :
+                  pendingProvider.name === 'qwen' ? 'dashscope.aliyun.com' :
+                  pendingProvider.name === 'gemini' ? 'aistudio.google.com' :
+                  'provider website'}
+              </Text>
+            </Box>
+          </Box>
+          <Box marginTop={1}>
+            <Text color="gray" dimColor>Enter Confirm · ESC Cancel</Text>
+          </Box>
+          <Box>
+            <Text color="cyan" bold>╰───────────────────────────────────────────────────────╯</Text>
+          </Box>
         </Box>
       )}
 
-      {/* Model Select */}
-      {view === 'model-select' && pendingProvider && (
+      {/* Model Select - Enhanced with descriptions */}
+      {view === 'model-select' && pendingProvider && pendingProviderDetail && (
         <Box flexDirection="column" marginLeft={2}>
-          <Text color="white" bold>Select Model</Text>
-          <Text color="gray" dimColor>ESC cancel</Text>
+          <Box marginBottom={1}>
+            <Text color="cyan" bold>╭─ Select Model ({pendingProviderDetail.displayName}) ──────────────────────────╮</Text>
+          </Box>
+          <Box flexDirection="column" paddingLeft={1}>
+            {/* 显示模型列表 */}
+            {pendingProviderDetail.models.map((model, index) => (
+              <Box key={model.id} flexDirection="column" marginBottom={1}>
+                <Box>
+                  <Text color={index === 0 ? 'green' : 'white'}>
+                    {index === 0 ? '● ' : '○ '}
+                  </Text>
+                  <Text color="white" bold>{model.id}</Text>
+                  {model.tags.length > 0 && (
+                    <Text color="yellow"> [{model.tags.join(', ')}]</Text>
+                  )}
+                </Box>
+                <Box paddingLeft={2}>
+                  <Text color="gray">{model.description} · </Text>
+                  <Text color="cyan">{model.context}</Text>
+                  <Text color="gray"> · </Text>
+                  <Text color="green">{model.price}</Text>
+                </Box>
+              </Box>
+            ))}
+            <Box marginTop={1}>
+              <SelectInput 
+                items={modelItems.map(m => ({ label: m.value, value: m.value }))} 
+                onSelect={handleModelSelect} 
+              />
+            </Box>
+          </Box>
           <Box marginTop={1}>
-            <SelectInput items={modelItems} onSelect={handleModelSelect} />
+            <Text color="gray" dimColor>↑↓ Navigate · Enter Select · ESC Back</Text>
+          </Box>
+          <Box>
+            <Text color="cyan" bold>╰───────────────────────────────────────────────────────╯</Text>
           </Box>
         </Box>
       )}
