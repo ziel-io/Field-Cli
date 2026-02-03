@@ -1,25 +1,53 @@
 # Field CLI
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version">
+  <strong>The First Contract-First AI CLI</strong>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/version-2.2.0-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/license-Apache--2.0-green.svg" alt="License">
   <img src="https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg" alt="Node">
   <img src="https://img.shields.io/badge/typescript-5.3+-blue.svg" alt="TypeScript">
 </p>
 
-**Field CLI** 是一个功能强大的 AI 命令行助手，原生支持 **Cognitive Modules（认知模块）** 系统。它提供了一个统一的接口来与多种大语言模型（LLM）进行交互，并支持通过 OpenAI Function Calling API 自动调用认知模块。
+<p align="center">
+  <em>Structured AI. No Surprises.</em>
+</p>
+
+---
+
+**Field CLI** is an independent, lightweight AI agent with native support for **Cognitive Modules v2.2** — guaranteeing structured, validated outputs from any LLM.
 
 ```
 ╭───────────────────────────────────────────────────────────────╮
 │                                                               │
-│  ██████╗   Welcome to Field CLI!                              │
-│  █ ■■ █    The AI-powered coding assistant with               │
-│  ██████╝   native Cognitive Modules support.                  │
+│  ◆ FIELD    The Contract-First AI CLI                         │
+│                                                               │
+│  ✓ Structured outputs via Envelope Contract                   │
+│  ✓ Multi-provider freedom (10+ LLMs, no lock-in)              │
+│  ✓ Production-ready with Schema validation                    │
 │                                                               │
 │  Send /help for help, /cog for Cognitive commands.            │
 │                                                               │
 ╰───────────────────────────────────────────────────────────────╯
 ```
+
+---
+
+## Why Field CLI?
+
+Unlike other AI CLIs that sacrifice reliability for speed, Field CLI **guarantees**:
+
+| Feature | Field CLI | Traditional AI CLIs |
+|---------|-----------|---------------------|
+| **Structured outputs** | ✅ Envelope Contract | ❌ Unpredictable text |
+| **Schema validation** | ✅ JSON Schema + Repair Pass | ❌ Hope for the best |
+| **Multi-provider** | ✅ 10+ LLMs, switch freely | ❌ Vendor lock-in |
+| **Lightweight** | ✅ ~3,000 lines | ❌ 50,000+ lines |
+| **Startup time** | ✅ <500ms | ❌ 2-3 seconds |
+
+---
 
 ## 目录
 
@@ -47,29 +75,41 @@
 
 ## 特性
 
-### 🤖 多模型支持
-- **10+ LLM 提供商**：MiniMax、DeepSeek、Kimi、OpenAI、Claude、Qwen、Gemini、Together AI、OpenRouter 等
+### 📜 Contract-First Architecture
+- **Envelope Contract**: 每个模块输出遵循标准化的 `{ meta, data, overflow }` 格式
+- **Schema Validation**: JSON Schema 验证输入输出，拒绝不合格数据
+- **Repair Pass**: 自动修复轻微格式问题，提高成功率
+- **Predictable**: AI 行为可预测、可验证、可审计
+
+### 🤖 Multi-Provider Freedom (10+ LLMs)
+- **无厂商锁定**：MiniMax、DeepSeek、Kimi、OpenAI、Claude、Qwen、Gemini、Together AI、OpenRouter
 - **统一 API**：所有提供商使用相同的 OpenAI 兼容接口
-- **推理模型优化**：自动检测并配置推理模型（如 Kimi K2.5、DeepSeek Reasoner）
+- **Smart Provider Selection v3.0**：基于 LMSYS Arena 多维度评分自动选择最优模型
+- **动态切换**：运行时一键切换，无需重启
 
-### 🧠 Cognitive Modules（认知模块）
-- **Contract-First 设计**：基于 Schema 的输入输出验证
+### 🧠 Cognitive Modules v2.2
+- **模块化 AI 能力**：将 AI 能力封装为可复用模块
 - **自动发现**：自动扫描本地和全局模块目录
-- **OpenAI Function Calling**：LLM 可自动调用认知模块
+- **OpenAI Function Calling**：LLM 自动调用认知模块
 - **Subagent 支持**：模块间嵌套调用与依赖管理
-- **GitHub 安装**：一键从 GitHub 安装模块
+- **一键安装**：从 GitHub 安装模块
 
-### 🔒 策略引擎（Policy Engine）
+### 🔒 Policy Engine (安全优先)
 - **硬停策略**：在执行前拦截危险操作
 - **TOML 配置**：可读的策略定义文件
-- **多层策略**：系统 → 用户 → 项目 三层策略覆盖
+- **多层策略**：系统 → 用户 → 项目 三层覆盖
 - **审批模式**：suggest / auto-edit / full-auto / none
 
-### 💻 现代化 UI
-- **React + Ink**：基于 React 的终端 UI 框架
-- **实时命令补全**：输入 `/` 即显示命令菜单
+### 💻 Modern UI (React + Ink)
+- **轻量快速**：<500ms 启动，~3000 行代码
+- **实时补全**：输入 `/` 即显示命令菜单
 - **流式响应**：支持 SSE 流式输出
-- **思考过程过滤**：自动过滤 `<think>` 标签内容
+- **思考过滤**：自动过滤 `<think>` 标签
+
+### 🔐 Enterprise-Ready
+- **Secure Storage**: AES-256-GCM 加密 API Key
+- **Version Management**: 智能更新检查
+- **Offline Support**: 离线可用（使用缓存数据）
 
 ---
 
@@ -78,7 +118,7 @@
 ### 从 npm 安装（推荐）
 
 ```bash
-npm install -g @anthropic-field/cli
+npm install -g field-cli-core
 ```
 
 ### 从源码安装
@@ -935,11 +975,18 @@ Apache License 2.0
 
 ---
 
-## 致谢
+## Acknowledgments
 
 - [Ink](https://github.com/vadimdemedes/ink) - React for CLI
-- [gemini-cli-cognitive](https://github.com/anthropics/gemini-cli-cognitive) - Cognitive Modules 灵感来源
+
+While inspired by the architecture of Gemini CLI, Field CLI is a complete rewrite focused on reliability and contract-first AI interactions.
 
 ---
 
-**Made with ❤️ by ziel-io**
+<p align="center">
+  <strong>Built for production. Not just prototypes.</strong>
+</p>
+
+<p align="center">
+  Made with ◆ by <a href="https://github.com/ziel-io">ziel-io</a>
+</p>
